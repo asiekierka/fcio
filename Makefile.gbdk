@@ -1,0 +1,94 @@
+# SPDX-License-Identifier: CC0-1.0
+#
+# SPDX-FileContributor: Adrian "asie" Siekierka, 2023
+
+TARGET ?= gb
+GBDK_HOME ?= /opt/gbdk
+LCC := $(GBDK_HOME)/bin/lcc
+MKDIR := mkdir
+AR := $(GBDK_HOME)/bin/sdar
+
+# Source code paths
+# -----------------
+
+INCLUDEDIRS	:= include include/fcio/pff src
+SOURCES_S	:=
+SOURCES_C	:= src/fcio.c
+
+# Defines passed to all files
+# ---------------------------
+
+DEFINES		:=
+
+# Libraries
+# ---------
+
+LIBDIRS		:= $(WF_TARGET_DIR)
+
+# Build artifacts
+# ---------------
+
+NAME		:= fcio
+BUILDDIR	:= build/$(TARGET)
+ARCHIVE		:= $(BUILDDIR)/lib$(NAME).a
+
+# Verbose flag
+# ------------
+
+ifeq ($(V),1)
+_V		:=
+else
+_V		:= @
+endif
+
+# Compiler and linker flags
+# -------------------------
+
+INCLUDEFLAGS	:= $(foreach path,$(INCLUDEDIRS),-I$(path)) \
+		   $(foreach path,$(LIBDIRS),-isystem $(path)/include)
+
+CFLAGS		+= -debug -Wf--opt-code-size -Wa-I$(GBDK_HOME)lib/sm83/ -Wa-l $(INCLUDEFLAGS)
+CFLAGS		+= -Wf--max-allocs-per-node50000
+
+# Intermediate build files
+# ------------------------
+
+OBJS		:= $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_S))) \
+		   $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_C)))
+
+DEPS		:= $(OBJS:.o=.d)
+
+# Targets
+# -------
+
+.PHONY: all clean
+
+all: $(OBJS)
+
+# objects in .a files don't support autobanking
+# $(ARCHIVE): $(OBJS)
+#	@echo "  AR      $@"
+#	@$(MKDIR) -p $(@D)
+#	$(_V)$(AR) rcs $@ $(OBJS)
+
+clean:
+	@echo "  CLEAN"
+	$(_V)$(RM) -r $(ARCHIVE) $(BUILDDIR)
+
+# Rules
+# -----
+
+$(BUILDDIR)/%.s.o : %.s
+	@echo "  AS      $<"
+	@$(MKDIR) -p $(@D)
+	$(_V)$(LCC) $(CFLAGS) -MMD -MP -c -o $@ $<
+
+$(BUILDDIR)/%.c.o : %.c
+	@echo "  CC      $<"
+	@$(MKDIR) -p $(@D)
+	$(_V)$(LCC) $(CFLAGS) -MMD -MP -c -o $@ $<
+
+# Include dependency files if they exist
+# --------------------------------------
+
+-include $(DEPS)
