@@ -21,10 +21,10 @@ DSTATUS disk_initialize (void) {
 	switch (fcio_gb_driver) {
 	case FCIO_GB_DRIVER_EDGB:
 		if (!edgb_sd_init())
-			return RES_ERROR;
+			return STA_NOINIT;
 		break;
 	}
-	return RES_OK;
+	return 0;
 }
 
 void fcio_unlock(void) {
@@ -35,7 +35,7 @@ void fcio_unlock(void) {
 		// TODO: Is there a better way?
 		edgb_unlock();
 		EDGB_REG_SPI_CTRL = 0xF7;
-		if (EDGB_REG_SPI_CTRL == 0x07) {
+		if ((EDGB_REG_SPI_CTRL & 0x7F) == 0x07) {
 			EDGB_REG_SPI_CTRL = EDGB_SPI_SS;
 			if (EDGB_REG_SPI_CTRL == EDGB_SPI_SS) {
 				fcio_gb_driver = FCIO_GB_DRIVER_EDGB;

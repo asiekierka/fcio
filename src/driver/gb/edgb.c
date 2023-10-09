@@ -59,6 +59,8 @@ bool edgb_sd_write_start(uint32_t sector) {
 }
 
 bool edgb_sd_init(void) {
+    uint8_t retries;
+
     EDGB_REG_SPI_CTRL = EDGB_SPI_SS;
     fcio_gb_local = 0;
     edgb_mmc_cmd(SDC_GO_IDLE_STATE, 0x95, 0); // Reset card
@@ -73,8 +75,15 @@ bool edgb_sd_init(void) {
 
         if ((r3_2 & 0xF) == 0x1 && r3_3 == 0xAA) {
             // attempt ACMD41 SDHC init
-            if (!(edgb_mmc_cmd(SDC_APP_PREFIX, 0x95, 0) & ~SDC_R1_IDLE)
-            && !(edgb_mmc_cmd(SDC_APP_SEND_OP_COND, 0x95, 1UL << 30))) {
+            retries = 0;
+            while (++retries) {
+                if (!(edgb_mmc_cmd(SDC_APP_PREFIX, 0x95, 0) & ~SDC_R1_IDLE)) {
+                    if (!(edgb_mmc_cmd(SDC_APP_SEND_OP_COND, 0x95, 1UL << 30))) {
+                        break;
+                    }
+                }
+            }
+            if (retries) {
                 // read OCR to check for SDHC card
                 if (!(edgb_mmc_cmd(SDC_READ_OCR, 0x95, 0))) {
                     EDGB_REG_SPI_CTRL &= ~EDGB_SPI_SS;
@@ -94,14 +103,21 @@ bool edgb_sd_init(void) {
     }
 
     // attempt ACMD41 init
-    if (!(edgb_mmc_cmd(SDC_APP_PREFIX, 0x95, 0) & ~SDC_R1_IDLE)
-    && !(edgb_mmc_cmd(SDC_APP_SEND_OP_COND, 0x95, 0))) {
-        goto card_init_complete;
+    retries = 0;
+    while (++retries) {
+        if (!(edgb_mmc_cmd(SDC_APP_PREFIX, 0x95, 0) & ~SDC_R1_IDLE)) {
+            if (!(edgb_mmc_cmd(SDC_APP_SEND_OP_COND, 0x95, 1UL << 30))) {
+                goto card_init_complete;
+            }
+        }
     }
 
     // attempt CMD1 init
-    if (!(edgb_mmc_cmd(SDC_SEND_OP_COND, 0x95, 0))) {
-        goto card_init_complete;
+    retries = 0;
+    while (++retries) {
+        if (!(edgb_mmc_cmd(SDC_SEND_OP_COND, 0x95, 0))) {
+            goto card_init_complete;
+        }
     }
 
     // no more init modes
