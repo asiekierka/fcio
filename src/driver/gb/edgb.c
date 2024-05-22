@@ -6,7 +6,7 @@
 #define EDGB_REG_SPI_DATA (*((volatile uint8_t*) 0xBD00))
 #define EDGB_REG_SPI_CTRL (*((volatile uint8_t*) 0xBD01))
 #define EDGB_SPI_SS         0x01
-#define EDGB_SPI_FULL_SPEED 0x02
+#define EDGB_SPI_LOW_SPEED 0x02
 #define EDGB_SPI_AREAD      0x04
 #define EDGB_SPI_BUSY       0x80
 #define EDGB_REG_KEY (*((volatile uint8_t*) 0xBD0A))
@@ -61,7 +61,7 @@ bool edgb_sd_write_start(uint32_t sector) {
 bool edgb_sd_init(void) {
     uint8_t retries;
 
-    EDGB_REG_SPI_CTRL = EDGB_SPI_SS;
+    EDGB_REG_SPI_CTRL = EDGB_SPI_SS | EDGB_SPI_LOW_SPEED;
     fcio_gb_local = 0;
     edgb_mmc_cmd(SDC_GO_IDLE_STATE, 0x95, 0); // Reset card
 
@@ -129,6 +129,6 @@ card_init_complete:
         return false;
     }
 
-    EDGB_REG_SPI_CTRL |= EDGB_SPI_FULL_SPEED;
+    EDGB_REG_SPI_CTRL &= ~EDGB_SPI_LOW_SPEED;
     return true;
 }
